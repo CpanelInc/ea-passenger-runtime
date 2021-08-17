@@ -1,0 +1,12 @@
+{
+   "dont_override_install" : 0,
+   "adjust_install_file_src" : [
+      ["^./(ea-passenger)$", "etc/logrotate.d/$1"],
+      ["^./(ea-passenger.conf)$", "usr/lib/tmpfiles.d/$1"],
+      ["^./(ea-passenger-analytics)$", "var/log/$1"],
+      ["^./(ea-passenger-runtime)$", "var/run/$1"]
+   ],
+   "override_vars" : {
+      "_sysconfdir" : "/etc"
+   }
+}
