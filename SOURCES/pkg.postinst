@@ -64,6 +64,26 @@ function verify_passenger_setting {
 #### actual script ##
 #####################
 
+# The system defaults may not be present, this is a fallback
+# system-default creation, in case the rpm or deb was not able
+# to create them
+
+if [ ! -e /etc/cpanel/ea4/passenger.python.system-default ]; then
+    if [ -x /usr/bin/python3 ]; then
+        ln -s /usr/bin/python3 /etc/cpanel/ea4/passenger.python.system-default
+    else
+        ln -s /usr/bin/python /etc/cpanel/ea4/passenger.python.system-default
+    fi
+fi
+
+if [ ! -e /etc/cpanel/ea4/passenger.ruby.system-default ]; then
+    ln -s /usr/bin/ruby /etc/cpanel/ea4/passenger.ruby.system-default
+fi
+
+if [ ! -e /etc/cpanel/ea4/passenger.node.system-default ]; then
+    ln -s /usr/bin/node /etc/cpanel/ea4/passenger.node.system-default
+fi
+
 verify_passenger_setting ruby   $(find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1);
 
 echo
