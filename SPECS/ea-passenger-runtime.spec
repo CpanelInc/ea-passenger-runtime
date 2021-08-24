@@ -37,7 +37,8 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/lib/tmpfiles.d/ea-passenger.conf
 # pkg.postinst has a fallback system-default creation.
 mkdir -p %{buildroot}/etc/cpanel/ea4
 ln -s /usr/bin/ruby %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
-ln -s /usr/bin/python %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
+# python3 is more likely to be available on all platforms
+ln -s /usr/bin/python3 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 ln -s /usr/bin/node %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 
 %post
