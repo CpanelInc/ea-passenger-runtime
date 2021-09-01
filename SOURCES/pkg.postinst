@@ -60,40 +60,42 @@ function verify_passenger_setting {
     fi
 }
 
+function verify_default {
+    local name=$1
+    local have=$2
+
+    # if default does not even exist this will create it ($target will be empty)
+    local target=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default);
+    if [ ! -x "$target" ]; then
+        echo "Default $name, $target, is not executable, updating to “$have”"
+        ln -fs $have /etc/cpanel/ea4/passenger.${name}.system-default
+    fi
+}
+
 #####################
 #### actual script ##
 #####################
 
-# The system defaults may not be present, this is a fallback
-# system-default creation, in case the rpm or deb was not able
-# to create them
+default_ruby=$(find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1)
+default_python=$(find /usr/bin -name 'python*' -executable ! -name "*-config" ! -name "pythonw*" | sort -r | head -n 1)
+default_nodejs=$(find /usr/bin -name 'node*' -executable | sort -r | head -n 1)
 
-if [ ! -L /etc/cpanel/ea4/passenger.python.system-default ]; then
-    if [ -x /usr/bin/python3 ]; then
-        ln -s /usr/bin/python3 /etc/cpanel/ea4/passenger.python.system-default
-    elif [ -x /usr/bin/python2 ]; then
-        ln -s /usr/bin/python2 /etc/cpanel/ea4/passenger.python.system-default
-    else
-        ln -s /usr/bin/python /etc/cpanel/ea4/passenger.python.system-default
-    fi
-fi
+# 1. Verify defaults exist on system
+verify_default ruby   $default_ruby
 
-if [ ! -L /etc/cpanel/ea4/passenger.ruby.system-default ]; then
-    ln -s /usr/bin/ruby /etc/cpanel/ea4/passenger.ruby.system-default
-fi
+verify_default python $default_python
 
-if [ ! -L /etc/cpanel/ea4/passenger.node.system-default ]; then
-    ln -s /usr/bin/node /etc/cpanel/ea4/passenger.node.system-default
-fi
+verify_default nodejs $default_nodejs
 
-verify_passenger_setting ruby   $(find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1);
+# 2. Verify settings exist on system
+verify_passenger_setting ruby   $default_ruby
 
 echo
 
-verify_passenger_setting python $(find /usr/bin -name 'python*' -executable ! -name "*-config" ! -name "pythonw*" | sort -r | head -n 1)
+verify_passenger_setting python $default_python
 
 echo
 
-verify_passenger_setting nodejs $(find /usr/bin -name 'node*' -executable | sort -r | head -n 1)
+verify_passenger_setting nodejs $default_nodejs
 
 exit 0

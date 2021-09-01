@@ -38,11 +38,9 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/lib/tmpfiles.d/ea-passenger.conf
 mkdir -p %{buildroot}/etc/cpanel/ea4
 ln -s /usr/bin/ruby %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
 %if 0%{?rhel} <= 7
-echo "CentOS 7"
 # python2 is default on C7
 ln -s /usr/bin/python2 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 %else
-echo "CentOS 8"
 # python3 is more likely to be available on all platforms
 ln -s /usr/bin/python3 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 %endif
@@ -57,9 +55,9 @@ ln -s /usr/bin/node %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 %config %{_sysconfdir}/logrotate.d/ea-passenger
 %dir /var/run/ea-passenger-runtime
 /usr/lib/tmpfiles.d/ea-passenger.conf
-/etc/cpanel/ea4/passenger.ruby.system-default
-/etc/cpanel/ea4/passenger.python.system-default
-/etc/cpanel/ea4/passenger.nodejs.system-default
+%config(noreplace) /etc/cpanel/ea4/passenger.ruby.system-default
+%config(noreplace) /etc/cpanel/ea4/passenger.python.system-default
+%config(noreplace) /etc/cpanel/ea4/passenger.nodejs.system-default
 
 %changelog
 * Tue Aug 17 2021 Dan Muey <dan@cpanel.net> - 1.0-1
