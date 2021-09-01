@@ -55,9 +55,9 @@ ln -s /usr/bin/node %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 %config %{_sysconfdir}/logrotate.d/ea-passenger
 %dir /var/run/ea-passenger-runtime
 /usr/lib/tmpfiles.d/ea-passenger.conf
-/etc/cpanel/ea4/passenger.ruby.system-default
-/etc/cpanel/ea4/passenger.python.system-default
-/etc/cpanel/ea4/passenger.nodejs.system-default
+%config(noreplace) /etc/cpanel/ea4/passenger.ruby.system-default
+%config(noreplace) /etc/cpanel/ea4/passenger.python.system-default
+%config(noreplace) /etc/cpanel/ea4/passenger.nodejs.system-default
 
 %changelog
 * Tue Aug 17 2021 Dan Muey <dan@cpanel.net> - 1.0-1
