@@ -36,15 +36,12 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/lib/tmpfiles.d/ea-passenger.conf
 # have these present so they may not make it into the rpm or deb.
 # pkg.postinst has a fallback system-default creation.
 mkdir -p %{buildroot}/etc/cpanel/ea4
-ln -s /usr/bin/ruby %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
-%if 0%{?rhel} <= 7
-# python2 is default on C7
-ln -s /usr/bin/python2 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
-%else
-# python3 is more likely to be available on all platforms
-ln -s /usr/bin/python3 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
-%endif
-ln -s /usr/bin/node %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
+
+# Need to create the symlinks so that the RPM can own them
+#   Create them with a value that %post will fix (and that won’t get reset due to %config(noreplace)) 
+ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
+ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
+ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 
 %post
 
