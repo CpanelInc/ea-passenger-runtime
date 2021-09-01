@@ -38,11 +38,9 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/lib/tmpfiles.d/ea-passenger.conf
 mkdir -p %{buildroot}/etc/cpanel/ea4
 ln -s /usr/bin/ruby %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
 %if 0%{?rhel} <= 7
-echo "CentOS 7"
 # python2 is default on C7
 ln -s /usr/bin/python2 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 %else
-echo "CentOS 8"
 # python3 is more likely to be available on all platforms
 ln -s /usr/bin/python3 %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 %endif
