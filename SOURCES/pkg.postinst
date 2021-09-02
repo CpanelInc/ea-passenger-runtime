@@ -90,6 +90,8 @@ function verify_passenger_setting {
 
         reset_passenger_setting $name /etc/cpanel/ea4/passenger.$name $defaultpath
     fi
+
+    echo
 }
 
 function verify_default {
@@ -124,20 +126,12 @@ default_nodejs=$(find /usr/bin -name 'node*' -executable | sort -r | head -n 1)
 
 # 1. Verify defaults exist on system
 verify_default ruby   $default_ruby
-
 verify_default python $default_python
-
 verify_default nodejs $default_nodejs
 
 # 2. Verify settings exist on system
 verify_passenger_setting ruby   $default_ruby
-
-echo
-
 verify_passenger_setting python $default_python
-
-echo
-
 verify_passenger_setting nodejs $default_nodejs
 
 if [ ! -z "$RESTART_NEEDED" ]; then
