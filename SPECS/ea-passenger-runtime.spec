@@ -13,6 +13,7 @@ URL: https://go.cpanel.net/ApplicationManager
 Source0: passenger.logrotate
 Source1: passenger.tmpfiles
 Source2: pkg.postinst
+Source3: ea-passenger-runtime-applications-settings
 
 AutoReqProv: no
 
@@ -38,10 +39,14 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/lib/tmpfiles.d/ea-passenger.conf
 mkdir -p %{buildroot}/etc/cpanel/ea4
 
 # Need to create the symlinks so that the RPM can own them
-#   Create them with a value that %post will fix (and that won’t get reset due to %config(noreplace)) 
+#   Create them with a value that %post will fix (and that won’t get reset due to %config(noreplace))
 ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
 ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
+
+# user passenger app config check/fix script used in %post
+mkdir -p %{buildroot}/usr/local/bin
+install -m 755 %{SOURCE3} %{buildroot}/usr/local/bin/ea-passenger-runtime-applications-settings
 
 %post
 
@@ -55,6 +60,7 @@ ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 %config(noreplace) /etc/cpanel/ea4/passenger.ruby.system-default
 %config(noreplace) /etc/cpanel/ea4/passenger.python.system-default
 %config(noreplace) /etc/cpanel/ea4/passenger.nodejs.system-default
+%attr(755,root,root) /usr/local/bin/ea-passenger-runtime-applications-settings
 
 %changelog
 * Tue Aug 17 2021 Dan Muey <dan@cpanel.net> - 1.0-1
