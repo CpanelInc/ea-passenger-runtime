@@ -1,0 +1,128 @@
+#!/usr/local/cpanel/3rdparty/bin/perl
+# cpanel - ea-passenger-runtime-applications-settings
+#                                                  Copyright 2021 cPanel, L.L.C.
+#                                                           All rights Reserved.
+# copyright@cpanel.net                                         http://cpanel.net
+# This code is subject to the cPanel license. Unauthorized copying is prohibited
+
+package scripts::ea_passenger_settings;
+
+use strict;
+use warnings;
+use Cpanel::JSON                            ();
+use Path::Tiny                              ();
+use Cpanel::Config::userdata::PassengerApps ();
+
+run(@ARGV) if !caller;
+
+sub run {
+    my (@args) = @_;
+
+    my $fix = grep( m/^--fix/, @args ) ? 1 : 0;
+    if ( $fix && @args > 1 || !$fix && @args > 0 ) {
+        die "Invalid arguments. Either pass no args (to report problems) or pass only --fix (to fix problems).\n";
+    }
+
+    my %settings = (
+        ruby   => scalar( _load_setting("ruby") ),
+        python => scalar( _load_setting("python") ),
+        nodejs => scalar( _load_setting("nodejs") ),
+    );
+
+    my %needs_fixed;
+    for my $userapps ( glob('/var/cpanel/userdata/*/applications.json') ) {
+        my $apps = Cpanel::JSON::LoadFile($userapps);
+
+        my $user = $userapps;
+        $user =~ s{^/var/cpanel/userdata/}{};
+        $user =~ s{/applications\.json$}{};
+
+        for my $appname ( sort keys %{$apps} ) {
+            my $app = $apps->{$appname};
+
+            for my $type ( keys %settings ) {
+                my $path = $app->{$type};
+                if ( !length($path) || !-x $path ) {
+                    $needs_fixed{$user}{$appname}{$type}{old} = $path;
+                    $needs_fixed{$user}{$appname}{$type}{new} = $settings{$type};
+                }
+            }
+        }
+    }
+
+    if ( !keys %needs_fixed ) {
+        print "No passenger application settings need fixed.\n";
+        return;
+    }
+
+    if ($fix) {
+        print "Fixing …\n";
+        _perform_fixes( \%needs_fixed );
+    }
+    else {
+        print "Problems (pass --fix to fix problems):\n";
+        print Cpanel::JSON::pretty_canonical_dump( \%needs_fixed );
+    }
+
+    return;
+}
+
+###############
+#### helpers ##
+###############
+
+sub _load_setting {
+    my ($type) = @_;
+    my $value = Path::Tiny::path("/etc/cpanel/ea4/passenger.$type")->slurp;
+    chomp $value;    # juuuust in case
+
+    die "“$type” setting “$value” is not executable!\n" if !-x $value;
+    return $value;
+}
+
+sub _perform_fixes {
+    my ($needs_fixed_hr) = @_;
+
+    for my $user ( sort keys %{$needs_fixed_hr} ) {
+        print "\t … user “$user” …\n";
+        my $file = "/var/cpanel/userdata/$user/applications.json";
+        my $apps = Cpanel::JSON::LoadFile($file);
+
+        for my $appname ( sort keys %{ $needs_fixed_hr->{$user} } ) {
+            print "\t\t … application “$appname” …\n";
+
+            for my $type ( sort keys %{ $needs_fixed_hr->{$user}{$appname} } ) {
+                my $new = $needs_fixed_hr->{$user}{$appname}{$type}{new};
+                my $old = $needs_fixed_hr->{$user}{$appname}{$type}{old} // "";
+
+                print "\t\t\t … type “$type”: changing from “$old” to “$new”.\n";
+                $apps->{$appname}{$type} = $new;
+            }
+        }
+
+        # save settings
+        Cpanel::JSON::DumpFile( $file, $apps );
+
+        # regen service confs
+        my $obj  = Cpanel::Config::userdata::PassengerApps->new( { user => $user } );
+        my $appz = $obj->list_applications();
+        for my $name ( keys %{$appz} ) {
+            if ( $appz->{$name}{enabled} ) { $obj->generate_apache_conf($name); }
+        }
+
+        if ( -x "/usr/local/cpanel/scripts/ea-nginx" ) {
+            system( '/usr/local/cpanel/scripts/ea-nginx', 'config', $user, '--no-reload' );
+        }
+    }
+
+    # restart services
+    system("/usr/local/cpanel/scripts/restartsrv_httpd --restart");
+
+    if ( -x "/usr/local/cpanel/scripts/ea-nginx" ) {
+        system("/usr/local/cpanel/scripts/ea-nginx reload");
+    }
+
+    return;
+}
+
+1;
