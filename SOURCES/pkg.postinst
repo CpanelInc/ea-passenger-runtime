@@ -4,11 +4,33 @@
 #### functions ##
 #################
 
+RESTART_NEEDED=""
+
 function reset_passenger_userdata {
     local name=$1
     local valu=$2
 
     echo "TODO: reset userdata that has $name configured with a value is not already $valu"
+
+    local PERL=/usr/local/cpanel/3rdparty/bin/perl
+    local UPDATE_USERDATA='my ($y, $n, $v)=@ARGV;my $u="";my $apps=eval {Cpanel::JSON::LoadFile($y)}; if ($@) { warn $@; exit 0 } for my $app (keys %{$apps}) { if(!$apps->{$app}{$n} || $apps->{$app}{$n} ne $v) { $apps->{$app}{$n} = $v;if(!$u) { $u=$y;$u=~ s{/[^/]+$}{};$u=~s{/var/cpanel/userdata/}{}; } } } Cpanel::JSON::DumpFile($y, $apps);print $u'
+    local UPDATE_INCLUDES='my $ch="";my $obj=Cpanel::Config::userdata::PassengerApps->new({user=>$ARGV[0]});my $apps=$obj->list_applications();for my $name (keys %{$apps}) {my $data=$apps->{$name};if ($data->{enabled}) {$obj->generate_apache_conf($name);$ch++;}}print $ch;'
+
+    for appconf in $(ls /var/cpanel/userdata/*/applications.json); do
+        REGEN_USER=$($PERL -MCpanel::JSON -e "$UPDATE_USERDATA" $appconf $name $valu)
+
+        if [ ! -z "$REGEN_USER" ]; then
+            MADE_CHANGES=$($PERL -MCpanel::Config::userdata::PassengerApps -e "$UPDATE_INCLUDES" $REGEN_USER)
+
+            if [ ! -z "$MADE_CHANGES" ]; then
+                RESTART_NEEDED=1
+
+                if [ -x "/usr/local/cpanel/scripts/ea-nginx" ]; then
+                    /usr/local/cpanel/scripts/ea-nginx config $REGEN_USER --no-reload
+                fi
+            fi
+        fi
+    done
 }
 
 function reset_passenger_setting {
@@ -107,5 +129,17 @@ verify_passenger_setting python $default_python
 echo
 
 verify_passenger_setting nodejs $default_nodejs
+
+if [ ! -z "$RESTART_NEEDED" ]; then
+    echo
+
+    echo "Restarting so updates can take effect"
+
+    /usr/local/cpanel/scripts/restartsrv_httpd --restart
+
+    if [ -x "/usr/local/cpanel/scripts/ea-nginx" ]; then
+        /usr/local/cpanel/scripts/ea-nginx reload
+    fi
+fi
 
 exit 0
