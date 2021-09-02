@@ -67,9 +67,19 @@ function verify_default {
     # if default does not even exist this will create it ($target will be empty)
     local target=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default);
     if [ ! -x "$target" ]; then
-        echo "Default $name, $target, is not executable, updating to “$have”"
-        ln -fs $have /etc/cpanel/ea4/passenger.${name}.system-default
+        echo "Default $name, $target, is not executable"
+
+        if [[ ! $have ]]; then
+            echo " … no $name found on system, leaving currently invalid value in place"
+        else
+            echo " … updating to “$have”"
+            ln -fs $have /etc/cpanel/ea4/passenger.${name}.system-default
+        fi
+    else
+        echo "Default $name, $target, is ok"
     fi
+
+    echo
 }
 
 #####################
