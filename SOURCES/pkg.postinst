@@ -4,13 +4,6 @@
 #### functions ##
 #################
 
-function reset_passenger_userdata {
-    local name=$1
-    local valu=$2
-
-    echo "TODO: reset userdata that has $name configured with a value is not already $valu"
-}
-
 function reset_passenger_setting {
     local name=$1
     local file=$2
@@ -18,8 +11,6 @@ function reset_passenger_setting {
 
     echo "Resetting $name setting to $valu"
     echo -n $valu > $file
-
-    reset_passenger_userdata $name $valu
 }
 
 function verify_passenger_setting {
@@ -36,10 +27,15 @@ function verify_passenger_setting {
                 reset_passenger_setting $name /etc/cpanel/ea4/passenger.$name $have
             else
                 local defaultpath=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default)
-                echo "Could not find $name locally. Passenger apps using it will not work until $defaultpath is installed!"
+                local $disp=$defaultpath;
+                if [ "$disp" == "/dev/null" ]; then
+                    $disp=$name
+                fi
+
+                echo "Could not find $name locally. Passenger apps using it will not work until $disp is installed!"
 
                 if [ "$name" == "ruby" ]; then
-                    echo "Passenger itself will not work until until $defaultpath is installed!"
+                    echo "Passenger itself will not work until until $disp is installed!"
                 fi
 
                 reset_passenger_setting $name /etc/cpanel/ea4/passenger.$name $defaultpath
@@ -49,29 +45,64 @@ function verify_passenger_setting {
         local defaultpath=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default)
         echo "$name is not configured for passenger, using default $defaultpath"
         if [ ! -x "$defaultpath" ]; then
-            echo "Could not find $defaultpath locally. Passenger apps using it will not work until $defaultpath is installed!"
+            local $disp=$defaultpath;
+            if [ "$disp" == "/dev/null" ]; then
+                $disp=$name
+            fi
+
+            echo "Could not find $defaultpath locally. Passenger apps using it will not work until $disp is installed!"
 
             if [ "$name" == "ruby" ]; then
-                echo "Passenger itself will not work until until $defaultpath is installed!"
+                echo "Passenger itself will not work until until $disp is installed!"
             fi
         fi
 
         reset_passenger_setting $name /etc/cpanel/ea4/passenger.$name $defaultpath
     fi
+
+    echo
+}
+
+function verify_default {
+    local name=$1
+    local have=$2
+
+    # if default does not even exist this will create it ($target will be empty)
+    local target=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default);
+    if [ ! -x "$target" ]; then
+        echo "Default $name, $target, is not executable"
+
+        if [[ ! $have ]]; then
+            echo " … no $name found on system, leaving currently invalid value in place"
+        else
+            echo " … updating to “$have”"
+            ln -fs $have /etc/cpanel/ea4/passenger.${name}.system-default
+        fi
+    else
+        echo "Default $name, $target, is ok"
+    fi
+
+    echo
 }
 
 #####################
 #### actual script ##
 #####################
 
-verify_passenger_setting ruby   $(find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1);
+default_ruby=$(find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1)
+default_python=$(find /usr/bin -name 'python*' -executable ! -name "*-config" ! -name "pythonw*" | sort -r | head -n 1)
+default_nodejs=$(find /usr/bin -name 'node*' -executable | sort -r | head -n 1)
 
-echo
+# 1. Verify defaults exist on system
+verify_default ruby   $default_ruby
+verify_default python $default_python
+verify_default nodejs $default_nodejs
 
-verify_passenger_setting python $(find /usr/bin -name 'python*' -executable ! -name "*-config" ! -name "pythonw*" | sort -r | head -n 1)
+# 2. Verify settings exist on system
+verify_passenger_setting ruby   $default_ruby
+verify_passenger_setting python $default_python
+verify_passenger_setting nodejs $default_nodejs
 
-echo
-
-verify_passenger_setting nodejs $(find /usr/bin -name 'node*' -executable | sort -r | head -n 1)
+/usr/local/bin/ea-passenger-runtime-applications-settings --fix
 
 exit 0
