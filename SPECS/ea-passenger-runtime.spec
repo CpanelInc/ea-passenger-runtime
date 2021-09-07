@@ -17,8 +17,11 @@ Source3: ea-passenger-runtime-applications-settings
 
 AutoReqProv: no
 
+Requires: ruby
+Requires: rubygem-bundler
+
 %description
-EA4 Passenger shared runtime files
+EA4 Passenger shared runtime files and packages
 
 %install
 

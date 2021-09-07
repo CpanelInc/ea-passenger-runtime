@@ -9,6 +9,10 @@
       ["^\\./(ea-passenger-analytics)$", "var/log/$1"],
       ["^\\./(ea-passenger-runtime)$", "var/run/$1"]
    ],
+   "remove_from_requires" : ["rubygem-bundler"],
+   "add_to_requires" : {
+      "ea-passenger-runtime": ["ruby-bundler"]
+   },
    "override_vars" : {
       "_sysconfdir" : "/etc"
    }
