@@ -42,16 +42,16 @@ install -m 644 %{SOURCE1} %{buildroot}/usr/lib/tmpfiles.d/ea-passenger.conf
 mkdir -p %{buildroot}/etc/cpanel/ea4
 
 # Need to create the symlinks so that the RPM can own them
-#   Create them with a value that %post will fix (and that won’t get reset due to %config(noreplace))
+#   Create them with a value that %posttrans will fix (and that won’t get reset due to %config(noreplace))
 ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
 ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
 ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 
-# user passenger app config check/fix script used in %post
+# user passenger app config check/fix script used in %posttrans
 mkdir -p %{buildroot}/usr/local/bin
 install -m 755 %{SOURCE3} %{buildroot}/usr/local/bin/ea-passenger-runtime-applications-settings
 
-%post
+%posttrans
 
 %include %{SOURCE2}
 
