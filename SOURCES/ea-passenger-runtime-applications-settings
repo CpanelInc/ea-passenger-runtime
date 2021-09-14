@@ -12,6 +12,7 @@ use warnings;
 use Cpanel::JSON                            ();
 use Path::Tiny                              ();
 use Cpanel::Config::userdata::PassengerApps ();
+use Cpanel::ConfigFiles::Apache 'apache_paths_facade';    # see POD for import specifics
 
 run(@ARGV) if !caller;
 
@@ -30,19 +31,27 @@ sub run {
     );
 
     my %needs_fixed;
+
+  USER:
     for my $userapps ( glob('/var/cpanel/userdata/*/applications.json') ) {
         my $apps = Cpanel::JSON::LoadFile($userapps);
 
         my $user = $userapps;
         $user =~ s{^/var/cpanel/userdata/}{};
         $user =~ s{/applications\.json$}{};
-
+      APP:
         for my $appname ( sort keys %{$apps} ) {
             my $app = $apps->{$appname};
 
+          TYPE:
             for my $type ( keys %settings ) {
                 my $path = $app->{$type};
                 if ( !length($path) || !-x $path ) {
+                    if ( length( $settings{$type} ) && !-x $settings{$type} ) {
+                        warn "$user’s app “$appname” has an invalid “$type” setting but can’t be reset because the global “$type” seeting is invalid also. If this app uses “$type” it will not work until “$type” is installed!\n";
+                        next TYPE;
+                    }
+
                     $needs_fixed{$user}{$appname}{$type}{old} = $path;
                     $needs_fixed{$user}{$appname}{$type}{new} = $settings{$type};
                 }
@@ -76,12 +85,17 @@ sub _load_setting {
     my $value = Path::Tiny::path("/etc/cpanel/ea4/passenger.$type")->slurp;
     chomp $value;    # juuuust in case
 
-    die "“$type” setting “$value” is not executable!\n" if !-x $value;
+    warn "“$type” setting “$value” is not executable!\n" if !-x $value;
     return $value;
 }
 
 sub _perform_fixes {
     my ($needs_fixed_hr) = @_;
+
+    if ( !-x apache_paths_facade->bin_httpd() ) {
+        warn "Apache binary is missing (not yets installed?) so we can’t fix the passenger config. Please re-run `$0 --fix` after Apache is installed.\n";
+        return;
+    }
 
     for my $user ( sort keys %{$needs_fixed_hr} ) {
         print "\t … user “$user” …\n";

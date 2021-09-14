@@ -27,12 +27,13 @@ function verify_passenger_setting {
                 reset_passenger_setting $name /etc/cpanel/ea4/passenger.$name $have
             else
                 local defaultpath=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default)
-                local $disp=$defaultpath;
+                local disp=$defaultpath;
                 if [ "$disp" == "/dev/null" ]; then
-                    $disp=$name
+                    disp=$name
+                    echo "The default is invalid. Passenger apps using it will not work until $disp is installed!"
+                else
+                    echo "Could not find $defaultpath locally. Passenger apps using it will not work until $disp is installed!"
                 fi
-
-                echo "Could not find $name locally. Passenger apps using it will not work until $disp is installed!"
 
                 if [ "$name" == "ruby" ]; then
                     echo "Passenger itself will not work until until $disp is installed!"
@@ -45,12 +46,13 @@ function verify_passenger_setting {
         local defaultpath=$(readlink /etc/cpanel/ea4/passenger.${name}.system-default)
         echo "$name is not configured for passenger, using default $defaultpath"
         if [ ! -x "$defaultpath" ]; then
-            local $disp=$defaultpath;
+            local disp=$defaultpath;
             if [ "$disp" == "/dev/null" ]; then
-                $disp=$name
+                disp=$name
+                echo "The default is invalid. Passenger apps using it will not work until $disp is installed!"
+            else
+                echo "Could not find $defaultpath locally. Passenger apps using it will not work until $disp is installed!"
             fi
-
-            echo "Could not find $defaultpath locally. Passenger apps using it will not work until $disp is installed!"
 
             if [ "$name" == "ruby" ]; then
                 echo "Passenger itself will not work until until $disp is installed!"
