@@ -24,6 +24,8 @@ sub run {
         die "Invalid arguments. Either pass no args (to report problems) or pass only --fix (to fix problems).\n";
     }
 
+    _verify_defaults_and_settings($fix);
+
     my %settings = (
         ruby   => scalar( _load_setting("ruby") ),
         python => scalar( _load_setting("python") ),
@@ -39,6 +41,7 @@ sub run {
         my $user = $userapps;
         $user =~ s{^/var/cpanel/userdata/}{};
         $user =~ s{/applications\.json$}{};
+
       APP:
         for my $appname ( sort keys %{$apps} ) {
             my $app = $apps->{$appname};
@@ -65,11 +68,11 @@ sub run {
     }
 
     if ($fix) {
-        print "Fixing …\n";
+        print "Fixing passenger application settings …\n";
         _perform_fixes( \%needs_fixed );
     }
     else {
-        print "Problems (pass --fix to fix problems):\n";
+        print "Passenger application setting problems (pass --fix to fix problems):\n";
         print Cpanel::JSON::pretty_canonical_dump( \%needs_fixed );
     }
 
@@ -93,7 +96,7 @@ sub _perform_fixes {
     my ($needs_fixed_hr) = @_;
 
     if ( !-x apache_paths_facade->bin_httpd() ) {
-        warn "Apache binary is missing (not yets installed?) so we can’t fix the passenger config. Please re-run `$0 --fix` after Apache is installed.\n";
+        warn "Apache binary is missing (not yet installed?) so we can’t fix the passenger config. Please re-run `$0 --fix` after Apache is installed.\n";
         return;
     }
 
@@ -134,6 +137,143 @@ sub _perform_fixes {
 
     if ( -x "/usr/local/cpanel/scripts/ea-nginx" ) {
         system("/usr/local/cpanel/scripts/ea-nginx reload");
+    }
+
+    return;
+}
+
+sub _verify_defaults_and_settings {
+    my ($fix) = @_;
+
+    my $default_ruby   = `find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1`;
+    my $default_python = `find /usr/bin -name 'python*' -executable ! -name "*-config" ! -name "pythonw*" | sort -r | head -n 1`;
+    my $default_nodejs = `find /usr/bin -name 'node*' -executable | sort -r | head -n 1`;
+
+    chomp $default_ruby;
+    chomp $default_python;
+    chomp $default_nodejs;
+
+    # 1. Verify defaults exist on system
+    _verify_default( ruby   => $default_ruby,   $fix );
+    _verify_default( python => $default_python, $fix );
+    _verify_default( nodejs => $default_nodejs, $fix );
+
+    print "\n";
+
+    # 2. Verify settings exist on system
+    _verify_passenger_setting( ruby   => $default_ruby,   $fix );
+    _verify_passenger_setting( python => $default_python, $fix );
+    _verify_passenger_setting( nodejs => $default_nodejs, $fix );
+    print "\n";
+
+    return;
+}
+
+sub _verify_default {
+    my ( $name, $have, $fix ) = @_;
+
+    my $path = "/etc/cpanel/ea4/passenger.$name.system-default";
+
+    # if default does not even exist this will create it ($target will be empty)
+    my $target = readlink($path) || "";
+    if ( !-x $target ) {
+        print "Default $name, $target, is not executable\n";
+
+        if ( !$have ) {
+            print "\t … no $name found on system, ";
+
+            if ($fix) {
+                print "leaving currently invalid value in place\n";
+            }
+            else {
+                print "currently invalid value would remain in place\n";
+            }
+        }
+        else {
+            if ($fix) {
+                print "\t … updating to “$have”\n";
+                unlink $path;
+                symlink $have, $path;
+            }
+            else {
+                print "\t … would update to “$have” (pass --fix to fix this problem)\n";
+            }
+        }
+    }
+    else {
+        print "Default $name, $target, is ok\n";
+    }
+
+    return;
+}
+
+sub _verify_passenger_setting {
+    my ( $name, $have, $fix ) = @_;
+
+    print "Verifying passenger setting for $name\n";
+    my $path = "/etc/cpanel/ea4/passenger.$name";
+
+    if ( -s $path ) {
+        my $curr = Path::Tiny::path($path)->slurp;
+        chomp $curr;    # juuuust in case
+
+        if ( !-x $curr ) {
+            print "\t$name’s setting, $curr, is not executable\n";
+
+            if ($have) {
+                _reset_passenger_setting( $name => $have, $fix );
+            }
+            else {
+                _set_to_default( $name, $fix );
+            }
+        }
+        else {
+            print "\t$name setting, $curr, is ok\n";
+        }
+    }
+    else {
+        print "\t$name is not configured for passenger, using default.\n";
+        _set_to_default( $name, $fix );
+    }
+
+    return;
+}
+
+sub _set_to_default {
+    my ( $name, $fix ) = @_;
+
+    my $defaultpath   = readlink("/etc/cpanel/ea4/passenger.$name.system-default") || "";
+    my $defdisp       = $defaultpath;
+    my $isplaceholder = 0;
+    if ( $defdisp eq "/usr/local/bin/ea-passenger-runtime_$name-is-not-installed" ) {
+        $isplaceholder = 1;
+        $defdisp       = $name;
+    }
+
+    if ($isplaceholder) {
+        print "The default is invalid. Passenger apps using it will not work until $defdisp is installed!\n";
+        print "Passenger itself will not work until until $defdisp is installed!\n" if $name eq "ruby";
+    }
+    elsif ( !-x $defaultpath ) {
+        print "The default, $defaultpath, is not executable. Passenger apps using it will not work until $defdisp is installed!\n";
+        print "Passenger itself will not work until until $defdisp is installed!\n" if $name eq "ruby";
+    }
+
+    _reset_passenger_setting( $name => $defaultpath, $fix );
+
+    return;
+}
+
+sub _reset_passenger_setting {
+
+    my ( $name, $value, $fix ) = @_;
+
+    if ($fix) {
+        print "\t\tResetting $name setting to $value\n";
+        Path::Tiny::path("/etc/cpanel/ea4/passenger.$name")->spew($value);
+    }
+    else {
+        print "\t\t“$name” needs reset to “$value” (pass --fix to fix this problem)\n";
     }
 
     return;

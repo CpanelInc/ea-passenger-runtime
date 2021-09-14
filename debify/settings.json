@@ -3,6 +3,7 @@
    "fix_dh_usrlocal" : 1,
    "adjust_install_file_src" : [
       ["^\\./(ea-passenger-runtime-applications-settings)", "usr/local/bin/$1"],
+      ["^\\./(ea-passenger-runtime_.*-is-not-installed)", "usr/local/bin/$1"],
       ["^\\./(passenger\\..*\\.system-default)$", "etc/cpanel/ea4/$1"],
       ["^\\./(ea-passenger)$", "etc/logrotate.d/$1"],
       ["^\\./(ea-passenger\\.conf)$", "usr/lib/tmpfiles.d/$1"],

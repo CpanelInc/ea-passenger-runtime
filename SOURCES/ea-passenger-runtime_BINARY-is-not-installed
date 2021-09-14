@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my %mod = (
+    ruby   => "bundler",
+    python => "pip",
+    nodejs => "npm",
+);
+
+if ( $0 =~ m/ea-passenger-runtime_(.*)-is-not-installed/ ) {
+    my $missing = $1;
+
+    if ( !exists $mod{$missing} ) {
+        die "$0 is misnamed\n";    # juust in case
+    }
+
+    print <<"MSG";
+!!!! “$missing” is not installed !!
+
+Applications using it will not function until you:
+
+   1. Install $missing and $mod{$missing}
+   2. Run `/usr/local/bin/ea-passenger-runtime-applications-settings --fix`
+
+MSG
+
+}
+else {
+    die "$0 is misnamed\n";    # juust in case
+}
+
+exit 0
