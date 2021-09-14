@@ -175,9 +175,15 @@ sub _verify_default {
     my $path = "/etc/cpanel/ea4/passenger.$name.system-default";
 
     # if default does not even exist this will create it ($target will be empty)
-    my $target = readlink($path) || "";
-    if ( !-x $target ) {
-        print "Default $name, $target, is not executable\n";
+    my $target      = readlink($path) || "";
+    my $is_fallback = $target eq "/usr/local/bin/ea-passenger-runtime_$name-is-not-installed" ? 1 : 0;
+    if ( !-x $target || $is_fallback ) {
+        if ($is_fallback) {
+            print "Default is fallback helper, attempting to re-set it\n";
+        }
+        else {
+            print "Default $name, $target, is not executable\n";
+        }
 
         if ( !$have ) {
             print "\t … no $name found on system, ";
@@ -217,8 +223,14 @@ sub _verify_passenger_setting {
         my $curr = Path::Tiny::path($path)->slurp;
         chomp $curr;    # juuuust in case
 
-        if ( !-x $curr ) {
-            print "\t$name’s setting, $curr, is not executable\n";
+        my $is_fallback = $curr eq "/usr/local/bin/ea-passenger-runtime_$name-is-not-installed" ? 1 : 0;
+        if ( !-x $curr || $is_fallback ) {
+            if ($is_fallback) {
+                print "\t$name’s setting is fallback helper\n";
+            }
+            else {
+                print "\t$name’s setting, $curr, is not executable\n";
+            }
 
             if ($have) {
                 _reset_passenger_setting( $name => $have, $fix );
