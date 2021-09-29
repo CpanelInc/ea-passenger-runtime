@@ -2,7 +2,7 @@ Summary: EA4 Passenger shared runtime files
 Name: ea-passenger-runtime
 
 # Doing release_prefix this way for Release allows for OBS-proof versioning, See EA-4590 for more details
-%define release_prefix 1
+%define release_prefix 2
 
 Version: 1.0
 Release: %{release_prefix}%{?dist}.cpanel
@@ -14,6 +14,7 @@ Source0: passenger.logrotate
 Source1: passenger.tmpfiles
 Source2: pkg.postinst
 Source3: ea-passenger-runtime-applications-settings
+Source4: ea-passenger-runtime_BINARY-is-not-installed
 
 AutoReqProv: no
 
@@ -43,13 +44,16 @@ mkdir -p %{buildroot}/etc/cpanel/ea4
 
 # Need to create the symlinks so that the RPM can own them
 #   Create them with a value that %posttrans will fix (and that won’t get reset due to %config(noreplace))
-ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
-ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
-ln -s /dev/null %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
+ln -s /usr/local/bin/ea-passenger-runtime_ruby-is-not-installed   %{buildroot}/etc/cpanel/ea4/passenger.ruby.system-default
+ln -s /usr/local/bin/ea-passenger-runtime_python-is-not-installed %{buildroot}/etc/cpanel/ea4/passenger.python.system-default
+ln -s /usr/local/bin/ea-passenger-runtime_nodejs-is-not-installed %{buildroot}/etc/cpanel/ea4/passenger.nodejs.system-default
 
 # user passenger app config check/fix script used in %posttrans
 mkdir -p %{buildroot}/usr/local/bin
 install -m 755 %{SOURCE3} %{buildroot}/usr/local/bin/ea-passenger-runtime-applications-settings
+install -m 755 %{SOURCE4} %{buildroot}/usr/local/bin/ea-passenger-runtime_ruby-is-not-installed
+ln -s /usr/local/bin/ea-passenger-runtime_ruby-is-not-installed %{buildroot}/usr/local/bin/ea-passenger-runtime_python-is-not-installed
+ln -s /usr/local/bin/ea-passenger-runtime_ruby-is-not-installed %{buildroot}/usr/local/bin/ea-passenger-runtime_nodejs-is-not-installed
 
 %posttrans
 
@@ -64,7 +68,13 @@ install -m 755 %{SOURCE3} %{buildroot}/usr/local/bin/ea-passenger-runtime-applic
 %config(noreplace) /etc/cpanel/ea4/passenger.python.system-default
 %config(noreplace) /etc/cpanel/ea4/passenger.nodejs.system-default
 %attr(755,root,root) /usr/local/bin/ea-passenger-runtime-applications-settings
+%attr(755,root,root) /usr/local/bin/ea-passenger-runtime_ruby-is-not-installed
+/usr/local/bin/ea-passenger-runtime_python-is-not-installed
+/usr/local/bin/ea-passenger-runtime_nodejs-is-not-installed
 
 %changelog
+* Tue Sep 14 2021 Dan Muey <dan@cpanel.net> - 1.0-2
+- ZC-9259: Have setting script do defaults (so it can be done at will); use helper script instead of /dev/null for missing binaries
+
 * Tue Aug 17 2021 Dan Muey <dan@cpanel.net> - 1.0-1
 - ZC-9213: Initial version
