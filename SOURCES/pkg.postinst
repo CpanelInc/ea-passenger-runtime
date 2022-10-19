@@ -1,5 +1,8 @@
 #!/bin/bash
 
-/usr/local/bin/ea-passenger-runtime-applications-settings --fix
+# This change allows this package to be used for builds on OBS
+if [ -x "/usr/local/cpanel/3rdparty/bin/perl" ]; then
+    /usr/local/bin/ea-passenger-runtime-applications-settings --fix
+fi
 
 exit 0
