@@ -2,7 +2,7 @@ Summary: EA4 Passenger shared runtime files
 Name: ea-passenger-runtime
 
 # Doing release_prefix this way for Release allows for OBS-proof versioning, See EA-4590 for more details
-%define release_prefix 2
+%define release_prefix 3
 
 Version: 1.0
 Release: %{release_prefix}%{?dist}.cpanel
@@ -73,6 +73,9 @@ ln -s /usr/local/bin/ea-passenger-runtime_ruby-is-not-installed %{buildroot}/usr
 /usr/local/bin/ea-passenger-runtime_nodejs-is-not-installed
 
 %changelog
+* Tue Nov 17 2026 Cory McIntire <cory.mcintire@webpros.com> - 1.0-3
+- EA-13663: Choose a default Python interpreter that Passenger applications accept, and repair settings that point at helpers like python-html2text
+
 * Tue Sep 14 2021 Dan Muey <dan@cpanel.net> - 1.0-2
 - ZC-9259: Have setting script do defaults (so it can be done at will); use helper script instead of /dev/null for missing binaries
 
