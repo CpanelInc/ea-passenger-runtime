@@ -49,8 +49,8 @@ sub run {
           TYPE:
             for my $type ( keys %settings ) {
                 my $path = $app->{$type};
-                if ( !length($path) || !-x $path ) {
-                    if ( length( $settings{$type} ) && !-x $settings{$type} ) {
+                if ( !length($path) || !_is_usable( $type => $path ) ) {
+                    if ( length( $settings{$type} ) && !_is_usable( $type => $settings{$type} ) ) {
                         warn "$user’s app “$appname” has an invalid “$type” setting but can’t be reset because the global “$type” seeting is invalid also. If this app uses “$type” it will not work until “$type” is installed!\n";
                         next TYPE;
                     }
@@ -83,12 +83,22 @@ sub run {
 #### helpers ##
 ###############
 
+sub _is_usable {
+    my ( $type, $path ) = @_;
+    return 0 if !-x $path;
+
+    # Mirrors only the name rule of Cpanel::Config::userdata::PassengerApps (not its findbin check);
+    # it rejects e.g. python-html2text
+    return 1 if $type ne 'python';
+    return $path =~ m{/python[0-9a-z.]*\z} ? 1 : 0;
+}
+
 sub _load_setting {
     my ($type) = @_;
     my $value = Path::Tiny::path("/etc/cpanel/ea4/passenger.$type")->slurp;
     chomp $value;    # juuuust in case
 
-    warn "“$type” setting “$value” is not executable!\n" if !-x $value;
+    warn "“$type” setting “$value” is not a usable $type interpreter!\n" if !_is_usable( $type => $value );
     return $value;
 }
 
@@ -146,7 +156,7 @@ sub _verify_defaults_and_settings {
     my ($fix) = @_;
 
     my $default_ruby   = `find /usr/bin -name 'ruby*' -executable | sort -r | head -n 1`;
-    my $default_python = `find /usr/bin -name 'python*' -executable ! -name "*-config" ! -name "pythonw*" | sort -r | head -n 1`;
+    my $default_python = `find /usr/bin -regextype posix-extended -regex '/usr/bin/python[0-9.]*' -executable | LC_ALL=C sort -rV | head -n 1`;
     my $default_nodejs = `find /usr/bin -name 'node*' -executable | sort -r | head -n 1`;
 
     chomp $default_ruby;
@@ -177,12 +187,12 @@ sub _verify_default {
     # if default does not even exist this will create it ($target will be empty)
     my $target      = readlink($path) || "";
     my $is_fallback = $target eq "/usr/local/bin/ea-passenger-runtime_$name-is-not-installed" ? 1 : 0;
-    if ( !-x $target || $is_fallback ) {
+    if ( !_is_usable( $name => $target ) || $is_fallback ) {
         if ($is_fallback) {
             print "Default is fallback helper, attempting to re-set it\n";
         }
         else {
-            print "Default $name, $target, is not executable\n";
+            print "Default $name, $target, is not a usable $name interpreter\n";
         }
 
         if ( !$have ) {
@@ -224,12 +234,12 @@ sub _verify_passenger_setting {
         chomp $curr;    # juuuust in case
 
         my $is_fallback = $curr eq "/usr/local/bin/ea-passenger-runtime_$name-is-not-installed" ? 1 : 0;
-        if ( !-x $curr || $is_fallback ) {
+        if ( !_is_usable( $name => $curr ) || $is_fallback ) {
             if ($is_fallback) {
                 print "\t$name’s setting is fallback helper\n";
             }
             else {
-                print "\t$name’s setting, $curr, is not executable\n";
+                print "\t$name’s setting, $curr, is not a usable $name interpreter\n";
             }
 
             if ($have) {
@@ -266,8 +276,8 @@ sub _set_to_default {
         print "The default is invalid. Passenger apps using it will not work until $defdisp is installed!\n";
         print "Passenger itself will not work until until $defdisp is installed!\n" if $name eq "ruby";
     }
-    elsif ( !-x $defaultpath ) {
-        print "The default, $defaultpath, is not executable. Passenger apps using it will not work until $defdisp is installed!\n";
+    elsif ( !_is_usable( $name => $defaultpath ) ) {
+        print "The default, $defaultpath, is not a usable $name interpreter. Passenger apps using it will not work until $defdisp is installed!\n";
         print "Passenger itself will not work until until $defdisp is installed!\n" if $name eq "ruby";
     }
 
